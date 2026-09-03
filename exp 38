@@ -1,0 +1,112 @@
+import numpy as np
+
+MOD = 26
+
+
+# Find modular inverse
+def mod_inverse(a, m):
+    for i in range(1, m):
+        if (a * i) % m == 1:
+            return i
+    return None
+
+
+# Convert text to numbers
+def text_to_numbers(text):
+    return [ord(c.upper()) - ord('A') for c in text if c.isalpha()]
+
+
+# Convert numbers to text
+def numbers_to_text(numbers):
+    return ''.join(chr((n % 26) + ord('A')) for n in numbers)
+
+
+# Encrypt using Hill cipher
+def hill_encrypt(plaintext, key):
+    numbers = text_to_numbers(plaintext)
+
+    while len(numbers) % 2 != 0:
+        numbers.append(23)  # Padding X
+
+    result = []
+
+    for i in range(0, len(numbers), 2):
+        p = np.array([[numbers[i]], [numbers[i + 1]]])
+
+        c = np.dot(key, p) % MOD
+
+        result.extend(c.flatten())
+
+    return numbers_to_text(result)
+
+
+# Recover key matrix from known plaintext
+def recover_key(plaintext, ciphertext):
+
+    p = text_to_numbers(plaintext)
+    c = text_to_numbers(ciphertext)
+
+    if len(p) < 4 or len(c) < 4:
+        print("At least 4 letters are required.")
+        return None
+
+    # Take first two plaintext blocks
+    P = np.array([
+        [p[0], p[2]],
+        [p[1], p[3]]
+    ])
+
+    # Take corresponding ciphertext blocks
+    C = np.array([
+        [c[0], c[2]],
+        [c[1], c[3]]
+    ])
+
+    # Calculate determinant
+    det = int(round(np.linalg.det(P))) % MOD
+
+    # Find modular inverse of determinant
+    det_inv = mod_inverse(det, MOD)
+
+    if det_inv is None:
+        print("Cannot recover key.")
+        print("Plaintext matrix is not invertible modulo 26.")
+        return None
+
+    # Matrix inverse modulo 26
+    P_inv = np.array([
+        [P[1][1], -P[0][1]],
+        [-P[1][0], P[0][0]]
+    ])
+
+    P_inv = (det_inv * P_inv) % MOD
+
+    # K = C × P^-1 mod 26
+    K = np.dot(C, P_inv) % MOD
+
+    return K.astype(int)
+
+
+# ---------------- MAIN PROGRAM ----------------
+
+print("HILL CIPHER - KNOWN PLAINTEXT ATTACK")
+print("-------------------------------------")
+
+plaintext = input("Enter known plaintext: ")
+ciphertext = input("Enter corresponding ciphertext: ")
+
+key = recover_key(plaintext, ciphertext)
+
+if key is not None:
+
+    print("\nRecovered Key Matrix:")
+    print(key)
+
+    # Test recovered key
+    test_plaintext = input(
+        "\nEnter plaintext to encrypt using recovered key: "
+    )
+
+    encrypted = hill_encrypt(test_plaintext, key)
+
+    print("Encrypted text:", encrypted)
