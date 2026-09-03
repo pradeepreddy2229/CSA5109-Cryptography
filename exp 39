@@ -1,0 +1,103 @@
+# Letter Frequency Attack on Additive Cipher
+
+from collections import Counter
+
+# English letter frequencies
+english_freq = {
+    'A': 0.0812, 'B': 0.0149, 'C': 0.0271, 'D': 0.0432,
+    'E': 0.1202, 'F': 0.0230, 'G': 0.0203, 'H': 0.0592,
+    'I': 0.0731, 'J': 0.0010, 'K': 0.0069, 'L': 0.0398,
+    'M': 0.0261, 'N': 0.0695, 'O': 0.0768, 'P': 0.0182,
+    'Q': 0.0011, 'R': 0.0602, 'S': 0.0628, 'T': 0.0910,
+    'U': 0.0288, 'V': 0.0111, 'W': 0.0209, 'X': 0.0017,
+    'Y': 0.0211, 'Z': 0.0007
+}
+
+
+# Decrypt using additive cipher
+def decrypt(ciphertext, key):
+    plaintext = ""
+
+    for ch in ciphertext:
+        if ch.isalpha():
+            c = ord(ch.upper()) - ord('A')
+
+            # P = (C - key) mod 26
+            p = (c - key) % 26
+
+            plaintext += chr(p + ord('A'))
+        else:
+            plaintext += ch
+
+    return plaintext
+
+
+# Calculate frequency score
+def frequency_score(text):
+    letters = [ch for ch in text if ch.isalpha()]
+
+    if not letters:
+        return 0
+
+    count = Counter(letters)
+    total = len(letters)
+
+    score = 0
+
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        observed = count[letter] / total
+        expected = english_freq[letter]
+
+        # Smaller difference = better match
+        score += abs(observed - expected)
+
+    return score
+
+
+# Perform frequency attack
+def frequency_attack(ciphertext, top_n):
+
+    candidates = []
+
+    # Try all 26 possible keys
+    for key in range(26):
+
+        plaintext = decrypt(ciphertext, key)
+
+        score = frequency_score(plaintext)
+
+        candidates.append((score, key, plaintext))
+
+    # Smaller score means closer to English frequency
+    candidates.sort(key=lambda x: x[0])
+
+    return candidates[:top_n]
+
+
+# ---------------- MAIN PROGRAM ----------------
+
+print("ADDITIVE CIPHER - LETTER FREQUENCY ATTACK")
+print("------------------------------------------")
+
+ciphertext = input("Enter ciphertext: ")
+
+top_n = int(input("How many possible plaintexts do you want? "))
+
+# Make sure top_n is between 1 and 26
+if top_n < 1:
+    top_n = 1
+
+if top_n > 26:
+    top_n = 26
+
+results = frequency_attack(ciphertext, top_n)
+
+print("\nTOP", top_n, "POSSIBLE PLAINTEXTS")
+print("------------------------------------------")
+
+for i, (score, key, plaintext) in enumerate(results, 1):
+
+    print("\nCandidate", i)
+    print("Key   :", key)
+    print("Score :", round(score, 4))
+    print("Text  :", plaintext)
